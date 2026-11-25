@@ -57,6 +57,16 @@ BEARSSL_CFLAGS := --target=x86_64-unknown-windows -std=c99 -O2 -ffreestanding \
 	-DBR_AES_X86NI=0 -DBR_SSE2=0 -DBR_POWER8=0 -DBR_INT128=0 -DBR_UMUL128=0 \
 	-DBR_64=1 -DBR_LE_UNALIGNED=1 -DBR_MSC=0 -DBR_amd64=0 -DBR_i386=0
 
+# WSL can lose unflushed writes to the Windows drive, leaving zero-filled outputs
+# with fresh timestamps that make would never rebuild. This deletes build/ first
+# if any output is damaged, so the same make command rebuilds from scratch.
+ifneq ($(filter-out clean,$(or $(MAKECMDGOALS),all)),)
+$(shell python3 scripts/check_build.py >&2)
+ifneq ($(.SHELLSTATUS),0)
+$(error scripts/check_build.py failed)
+endif
+endif
+
 .PHONY: all run debug test unit smoke usb anchors test-image clean
 
 all: $(DISK)

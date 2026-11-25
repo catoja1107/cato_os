@@ -20,6 +20,13 @@ refuse() {
     exit 1
 }
 
+# Firmware silently skips a loader without a PE header and reports "Not Found".
+# A zero-filled file from an interrupted write would otherwise pass every check below.
+if [ "$(head -c 2 -- "$efi")" != MZ ]; then
+    echo "mkimage: '$efi' is not an EFI executable (no MZ header). Run make again to rebuild it." >&2
+    exit 1
+fi
+
 case "$out" in
     /dev/*|/sys/*|/proc/*) refuse "this is a device or kernel path" ;;
     *.img) ;;
@@ -59,6 +66,13 @@ esp="$tmp@@$esp_offset"
 mformat -i "$esp" -F -T "$esp_sectors" -H "$esp_start" -c 1 -v CATO_ESP ::
 mmd -i "$esp" ::/EFI ::/EFI/BOOT
 mcopy -i "$esp" "$efi" ::/EFI/BOOT/BOOTX64.EFI
+
+# Read the loader back before installing the image. Otherwise an image whose
+# writes were lost would get a fresh timestamp, and make would never rebuild it.
+if ! mcopy -n -i "$esp" ::/EFI/BOOT/BOOTX64.EFI - | cmp -s - "$efi"; then
+    echo "mkimage: verification failed: EFI/BOOT/BOOTX64.EFI in the image does not match $efi" >&2
+    exit 1
+fi
 
 mv -f "$tmp" "$out"
 trap - EXIT INT TERM

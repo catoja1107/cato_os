@@ -23,7 +23,9 @@ The loader prints its `Image base`. A runtime address minus that base is the off
 
 ## Symptoms
 
-**Firmware does not start the loader.** Confirm the file exists with `MTOOLS_SKIP_CHECK=1 mdir -i build/cato.img@@1M ::/EFI/BOOT`. On real hardware, confirm that Secure Boot is off and that you chose the USB drive's UEFI boot entry.
+**Firmware does not start the loader.** Confirm the file exists with `MTOOLS_SKIP_CHECK=1 mdir -i build/cato.img@@1M ::/EFI/BOOT`. In QEMU this shows as `BdsDxe: failed to load Boot0001 ... Not Found` followed by the UEFI shell. Firmware also reports "Not Found" when the file exists but is not a valid EFI executable. On real hardware, confirm that Secure Boot is off and that you chose the USB drive's UEFI boot entry.
+
+**Build outputs filled with zeros.** If WSL stops before its writes to the Windows drive are flushed, build outputs can keep their size and timestamps but hold only zeros, so make never rebuilds them. Every `make` command except `make clean` first runs `scripts/check_build.py`. If it finds a damaged output, it deletes `build/` and the same command rebuilds everything.
 
 **Black screen before ExitBootServices.** Check `build/serial.log` after `make smoke`. If the text is there, the problem is in the display path. Compare the printed resolution, pixel format, and scanline with what the drawing code uses.
 
